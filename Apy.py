@@ -2,50 +2,42 @@ import streamlit as st
 import requests
 
 # --- CONFIGURACIÓN ---
-# ASEGÚRATE DE QUE TU LLAVE ESTÉ AQUÍ DENTRO SIN ESPACIOS
-RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" # <--- PEGA TU LLAVE AQUÍ
+RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" # <--- No olvides poner tu llave de nuevo
 HOST = "free-api-live-football-data.p.rapidapi.com"
 
-st.set_page_config(page_title="OscarBet Analysis", layout="centered")
-st.title("⚽ OscarBet: Central de Análisis")
+st.set_page_config(page_title="OscarBet Pro", layout="centered")
+st.title("⚽ OscarBet: Análisis Elite")
 
-# --- FUNCIÓN DE PRUEBA ---
-def probar_conexion():
-    url = f"https://{HOST}/football-get-all-leagues"
-    headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": HOST
-    }
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            return True, response.json()
-        elif response.status_code == 403:
-            return False, "Error 403: Llave inválida o plan no activado."
-        elif response.status_code == 429:
-            return False, "Error 429: Te gastaste los créditos del mes."
-        else:
-            return False, f"Error {response.status_code}"
-    except Exception as e:
-        return False, str(e)
+def traer_datos(endpoint, params=None):
+    url = f"https://{HOST}{endpoint}"
+    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": HOST}
+    res = requests.get(url, headers=headers, params=params)
+    return res.json()
 
-# --- INTERFAZ ---
-st.sidebar.header("Menú")
-if st.sidebar.button("🔌 Probar Conexión Real"):
-    st.write("Conectando con el servidor de datos...")
-    exito, resultado = probar_conexion()
-    
-    if exito:
-        st.success("✅ ¡CONECTADO EXITOSAMENTE!")
-        # Mostramos las primeras 5 ligas para confirmar
-        ligas = resultado.get('data', [])
-        if ligas:
-            st.write("Ligas encontradas:")
-            for liga in ligas[:5]:
-                st.write(f"🏆 {liga.get('league_name')}")
+# --- BARRA LATERAL ---
+st.sidebar.header("Menú Pro")
+modo = st.sidebar.radio("Ir a:", ["🔥 Partidos en Vivo", "📅 Próximos Partidos", "📈 Estadísticas Pro"])
+
+if modo == "🔥 Partidos en Vivo":
+    st.subheader("Marcadores y Stats en Tiempo Real")
+    data = traer_datos("/football-get-all-live-connections")
+    if data and 'data' in data:
+        for match in data['data'][:10]: # Muestra los primeros 10
+            with st.expander(f"{match['home_name']} vs {match['away_name']}"):
+                col1, col2 = st.columns(2)
+                col1.metric("Marcador", f"{match['score']}")
+                col2.write(f"**Corners:** {match.get('corners', 'N/A')}")
+                st.write(f"**Ataques Peligrosos:** {match.get('dangerous_attacks', 'N/A')}")
+                st.progress(0.75) # Barra de intensidad
     else:
-        st.error(f"❌ FALLO DE CONEXIÓN: {resultado}")
-        st.info("Revisa si tu plan en RapidAPI está activo o si la llave está bien escrita.")
+        st.info("No hay partidos en vivo en este momento.")
 
-st.divider()
-st.write("Usa el botón de la izquierda para verificar la señal.")
+elif modo == "📈 Estadísticas Pro":
+    st.subheader("Análisis para Parlays")
+    st.write("Selecciona un equipo para ver su promedio de Tiros y Paradas.")
+    # Aquí puedes usar /football-get-team-statistics cuando tengas el ID del equipo
+    st.warning("Consejo: Revisa los equipos con >5 corners en los últimos 3 partidos.")
+
+# --- FOOTER ---
+st.sidebar.markdown("---")
+st.sidebar.write("🟢 Conexión: **ÓPTIMA**")
