@@ -8,38 +8,54 @@ HOST = "metrx-factory.p.rapidapi.com"
 st.set_page_config(page_title="OscarBet Pro", layout="centered")
 st.title("⚽ OscarBet: Central de Datos")
 
-def fetch_data(endpoint):
+def fetch_data(endpoint, params=None):
     url = f"https://{HOST}{endpoint}"
-    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": HOST}
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": HOST
+    }
     try:
+        # Quitamos los 'params' fijos para que no bloquee la búsqueda
         res = requests.get(url, headers=headers, timeout=15)
         return res.json()
     except Exception as e:
         return {"error_local": str(e)}
 
-st.subheader("Buscando Datos Reales...")
+st.subheader("Partidos Disponibles")
 
-# Pedimos los datos
-data = fetch_data("/matches/upcoming")
+# Probamos con el endpoint base que suele ser el más estable
+data = fetch_data("/matches")
 
-# MOSTRAR TODO SIN FILTROS
 if data:
-    # 1. Intentamos buscar la lista de partidos
-    # Metrx usa 'result' o a veces manda la lista directo
-    partidos = data.get('result', []) if isinstance(data, dict) else []
-    
-    if partidos:
-        st.success(f"¡Se encontraron {len(partidos)} partidos!")
-        for item in partidos:
-            m = item.get('match', {})
-            st.write(f"🆔 **ID Partido:** {m.get('id')}")
-            st.write(f"⏰ **Inicio:** {m.get('start')}")
-            st.divider()
-    else:
-        st.warning("La conexión funciona, pero la lista de partidos llegó vacía.")
-        st.write("Esto es lo que mandó la API exactamente:")
-        st.json(data) # Esto nos mostrará el JSON crudo en la pantalla
-else:
-    st.error("No se recibió nada de la API. Revisa la llave en GitHub.")
+    # Si la API devuelve un mensaje de error, lo mostramos para saber
+    if "message" in data and "does not exist" in data["message"]:
+        st.error("La API dice que esa sección no existe. Probando ruta alternativa...")
+        # INTENTO PLAN B: Ruta que vimos en tu captura de pantalla
+        data = fetch_data("/match-metrics") 
 
-st.sidebar.write(f"Estado: Conectado a {HOST}")
+    # BUSCAR LOS PARTIDOS EN EL JSON
+    # Metrx suele guardarlos en 'result' o mandarlos como lista
+    partidos = []
+    if isinstance(data, dict):
+        partidos = data.get('result', data.get('data', []))
+    elif isinstance(data, list):
+        partidos = data
+
+    if partidos:
+        st.success(f"¡Conectado! Mostrando {len(partidos)} partidos.")
+        for item in partidos:
+            # Estructura según tu captura del 200 OK
+            m = item.get('match', item) 
+            match_id = m.get('id', 'Sin ID')
+            inicio = m.get('start', 'Ver horario')
+            
+            with st.expander(f"🏟️ Partido ID: {match_id}"):
+                st.write(f"**Inicio:** {inicio}")
+                st.write("**Estado:** Programado")
+                st.button("Analizar Corners", key=match_id)
+    else:
+        st.warning("No hay partidos en la lista ahora mismo.")
+        with st.expander("🛠️ Ver respuesta de la API"):
+            st.write(data)
+else:
+    st.error("No se recibió respuesta. Revisa tu Key.")
