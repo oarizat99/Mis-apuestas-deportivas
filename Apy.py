@@ -1,46 +1,51 @@
 import streamlit as st
 import requests
-import pandas as pd
 
 # --- CONFIGURACIÓN ---
-# Pega aquí tu llave que empieza por 731523...
-RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" 
+# ASEGÚRATE DE QUE TU LLAVE ESTÉ AQUÍ DENTRO SIN ESPACIOS
+RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" # <--- PEGA TU LLAVE AQUÍ
 HOST = "free-api-live-football-data.p.rapidapi.com"
 
 st.set_page_config(page_title="OscarBet Analysis", layout="centered")
-
 st.title("⚽ OscarBet: Central de Análisis")
-st.subheader("Datos Pro: Tiros, Corners y Paradas")
 
-# --- FUNCIÓN PARA PEDIR DATOS ---
-def traer_datos(endpoint):
-    url = f"https://{HOST}{endpoint}"
+# --- FUNCIÓN DE PRUEBA ---
+def probar_conexion():
+    url = f"https://{HOST}/football-get-all-leagues"
     headers = {
         "X-RapidAPI-Key": RAPIDAPI_KEY,
         "X-RapidAPI-Host": HOST
     }
     try:
-        response = requests.get(url, headers=headers)
-        return response.json()
-    except:
-        return None
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            return True, response.json()
+        elif response.status_code == 403:
+            return False, "Error 403: Llave inválida o plan no activado."
+        elif response.status_code == 429:
+            return False, "Error 429: Te gastaste los créditos del mes."
+        else:
+            return False, f"Error {response.status_code}"
+    except Exception as e:
+        return False, str(e)
 
 # --- INTERFAZ ---
-st.sidebar.header("Panel de Control")
-menu = st.sidebar.selectbox("Selecciona una opción", ["Próximos Partidos", "Ligas Disponibles", "Calculadora de Picks"])
+st.sidebar.header("Menú")
+if st.sidebar.button("🔌 Probar Conexión Real"):
+    st.write("Conectando con el servidor de datos...")
+    exito, resultado = probar_conexion()
+    
+    if exito:
+        st.success("✅ ¡CONECTADO EXITOSAMENTE!")
+        # Mostramos las primeras 5 ligas para confirmar
+        ligas = resultado.get('data', [])
+        if ligas:
+            st.write("Ligas encontradas:")
+            for liga in ligas[:5]:
+                st.write(f"🏆 {liga.get('league_name')}")
+    else:
+        st.error(f"❌ FALLO DE CONEXIÓN: {resultado}")
+        st.info("Revisa si tu plan en RapidAPI está activo o si la llave está bien escrita.")
 
-if menu == "Ligas Disponibles":
-    st.write("Consultando ligas...")
-    res = traer_datos("/football-get-all-leagues")
-    if res and 'data' in res:
-        st.write(res['data'])
-
-elif menu == "Próximos Partidos":
-    st.write("Aquí verás los partidos analizados con tu nueva API.")
-    # Nota: Esta API usa endpoints específicos para ver los partidos de hoy
-    st.info("Pulsa el botón en la barra lateral para actualizar datos.")
-
-elif menu == "Calculadora de Picks":
-    st.warning("🎯 Recomendación basada en Stats")
-    st.write("Calculando probabilidades de Over/Under y Corners...")
-    # Aquí puedes añadir tus fórmulas de apuesta
+st.divider()
+st.write("Usa el botón de la izquierda para verificar la señal.")
