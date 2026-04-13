@@ -2,36 +2,45 @@ import streamlit as st
 import requests
 import pandas as pd
 
-# CONFIGURACIÓN DE TU LLAVE DE RAPIDAPI
-# (Copia aquí la llave que sacaste de la pestaña Endpoints)
-RAPIDAPI_KEY = "TU_LLAVE_AQUI"
+# --- CONFIGURACIÓN ---
+# Pega aquí tu llave que empieza por 731523...
+RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" 
+HOST = "free-api-live-football-data.p.rapidapi.com"
 
-st.set_page_config(page_title="OscarBet Analysis", layout="wide")
+st.set_page_config(page_title="OscarBet Analysis", layout="centered")
 
-st.title("🎯 Calculadora de Picks OscarBet")
-st.write("Datos Pro: Tiros, Corners y Paradas")
+st.title("⚽ OscarBet: Central de Análisis")
+st.subheader("Datos Pro: Tiros, Corners y Paradas")
 
-def buscar_partido(liga_id):
-    url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-    querystring = {"league": liga_id, "next": "5"} # Próximos 5 partidos
+# --- FUNCIÓN PARA PEDIR DATOS ---
+def traer_datos(endpoint):
+    url = f"https://{HOST}{endpoint}"
     headers = {
         "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+        "X-RapidAPI-Host": HOST
     }
-    response = requests.get(url, headers=headers, params=querystring)
-    return response.json()['response']
+    try:
+        response = requests.get(url, headers=headers)
+        return response.json()
+    except:
+        return None
 
-# IDs de ligas populares: Premier (39), La Liga (140), Serie A (135), Colombia (239)
-liga = st.selectbox("Selecciona Liga", [140, 39, 135, 239], format_func=lambda x: {140:"La Liga", 39:"Premier League", 135:"Serie A", 239:"Liga BetPlay"}[x])
+# --- INTERFAZ ---
+st.sidebar.header("Panel de Control")
+menu = st.sidebar.selectbox("Selecciona una opción", ["Próximos Partidos", "Ligas Disponibles", "Calculadora de Picks"])
 
-partidos = buscar_partido(liga)
+if menu == "Ligas Disponibles":
+    st.write("Consultando ligas...")
+    res = traer_datos("/football-get-all-leagues")
+    if res and 'data' in res:
+        st.write(res['data'])
 
-for p in partidos:
-    with st.expander(f"⚽ {p['teams']['home']['name']} vs {p['teams']['away']['name']}"):
-        st.write(f"📅 Fecha: {p['fixture']['date'][:10]}")
-        
-        # Aquí la app analiza los datos y te da una recomendación
-        st.success("💡 Recomendación de Apuesta:")
-        st.write("- **Probabilidad +1.5 Goles:** 82%")
-        st.write("- **Pronóstico de Corners:** Más de 8.5")
-        st.write("- **Jugador Clave:** Tiros a puerta esperados > 1.5")
+elif menu == "Próximos Partidos":
+    st.write("Aquí verás los partidos analizados con tu nueva API.")
+    # Nota: Esta API usa endpoints específicos para ver los partidos de hoy
+    st.info("Pulsa el botón en la barra lateral para actualizar datos.")
+
+elif menu == "Calculadora de Picks":
+    st.warning("🎯 Recomendación basada en Stats")
+    st.write("Calculando probabilidades de Over/Under y Corners...")
+    # Aquí puedes añadir tus fórmulas de apuesta
