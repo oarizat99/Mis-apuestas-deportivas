@@ -1,6 +1,5 @@
 import streamlit as st
-import requests
-
+impor
 # --- CONFIGURACIÓN ---
 RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" # <--- No olvides poner tu llave de nuevo
 HOST = "free-api-live-football-data.p.rapidapi.com"
