@@ -2,11 +2,11 @@ import streamlit as st
 import requests
 
 # --- CONFIGURACIÓN ---
-RAPIDAPI_KEY = "https://www.google.com/search?q=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799&ie=UTF-8&oe=UTF-8&hl=es-co&client=safari" # <--- ¡Pon tu llave de Metrx aquí!
+RAPIDAPI_KEY = "https://www.google.com/search?q=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799&ie=UTF-8&oe=UTF-8&hl=es-co&client=safari#sbfbu=1&pi=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" 
 HOST = "metrx-factory.p.rapidapi.com"
 
-st.set_page_config(page_title="OscarBet Pro", layout="centered")
-st.title("⚽ OscarBet: Metrx Edition")
+st.set_page_config(page_title="OscarBet Final", layout="centered")
+st.title("⚽ OscarBet: Central de Datos")
 
 def fetch_metrx(endpoint):
     url = f"https://{HOST}{endpoint}"
@@ -14,36 +14,34 @@ def fetch_metrx(endpoint):
     try:
         res = requests.get(url, headers=headers, timeout=10)
         return res.json()
-    except:
-        return None
+    except Exception as e:
+        return {"error": str(e)}
 
-menu = st.sidebar.radio("MENÚ", ["🏆 Ligas Top", "📅 Próximos Partidos", "🎯 Mi Algoritmo"])
+menu = st.sidebar.radio("MENÚ", ["📅 Partidos de Hoy", "🏆 Ver Ligas"])
 
-if menu == "🏆 Ligas Top":
-    st.subheader("Las mejores 100 Competiciones")
-    with st.spinner("Cargando ranking..."):
-        data = fetch_metrx("/competitions")
-        if data and isinstance(data, list): # Metrx a veces envía una lista directa
-            for liga in data[:20]:
-                st.write(f"🏆 {liga.get('name', 'Liga')} - **{liga.get('country', 'Mundo')}**")
-        elif data and 'data' in data:
-            for liga in data['data'][:20]:
-                st.write(f"🏆 {liga.get('name')} - **{liga.get('country')}**")
-        else:
-            st.info("💡 Haz clic en 'Próximos Partidos' para ver la acción de hoy.")
+if menu == "📅 Partidos de Hoy":
+    st.subheader("Buscando partidos...")
+    raw_data = fetch_metrx("/matches/upcoming")
+    
+    # ESTO ES LO QUE NOS DIRÁ LA VERDAD
+    if raw_data:
+        # Intento de mostrar datos ordenados
+        if isinstance(raw_data, dict) and 'data' in raw_data:
+            partidos = raw_data['data']
+            if len(partidos) > 0:
+                for m in partidos:
+                    st.write(f"✅ {m.get('home_team', 'Equipo A')} vs {m.get('away_team', 'Equipo B')}")
+            else:
+                st.warning("La API conectó, pero dice que no hay partidos en las próximas 8 horas.")
+        
+        # SI NO MUESTRA NADA ARRIBA, ESTO NOS MUESTRA EL ERROR REAL
+        st.divider()
+        with st.expander("🛠️ DEBUG: Ver respuesta real de la API"):
+            st.write(raw_data)
+    else:
+        st.error("No se recibió ninguna respuesta de la API.")
 
-elif menu == "📅 Próximos Partidos":
-    st.subheader("Acción para las próximas 8 horas")
-    with st.spinner("Buscando partidos..."):
-        data = fetch_metrx("/matches/upcoming")
-        if data and 'data' in data:
-            for m in data['data']:
-                with st.expander(f"🕒 {m.get('time', 'S/H')} | {m['home_team']} vs {m['away_team']}"):
-                    st.write(f"📊 **Performance Index:** {m.get('performance_index', 'N/A')}")
-                    st.write(f"📌 **Liga:** {m.get('competition', 'N/A')}")
-        else:
-            st.warning("No hay partidos programados en el radar de 8 horas.")
-
-elif menu == "🎯 Mi Algoritmo":
-    st.subheader("Predicciones de Inteligencia")
-    st.success("Recomendación: Busca partidos donde el Performance Index sea > 75 para el Local.")
+elif menu == "🏆 Ver Ligas":
+    ligas_raw = fetch_metrx("/competitions")
+    st.write("### Respuesta de Ligas:")
+    st.write(ligas_raw)
