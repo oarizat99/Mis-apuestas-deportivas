@@ -2,46 +2,51 @@ import streamlit as st
 import requests
 
 # --- CONFIGURACIÓN ---
-RAPIDAPI_KEY = "https://www.google.com/search?q=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799&ie=UTF-8&oe=UTF-8&hl=es-co&client=safari#sbfbu=1&pi=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" 
+RAPIDAPI_KEY = "https://www.google.com/search?q=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799&client=safari&hs=CI2U&sca_esv=f0f46d557053f7c4&hl=es-co&sxsrf=ANbL-n75lhcMAYj5NVZ1KXm23rxBfK_pGg%3A1776110825048&ei=6UzdabHYApiNwbkP_sS3EQ&biw=414&bih=624&oq=731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799&gs_lp=EhNtb2JpbGUtZ3dzLXdpei1zZXJwIjI3MzE1MjNhYWI4bXNoMWVmZjQzNWUyNmQ0YjcycDE1OTY5Nmpzbjg4ZDhkNjliNjc5OUjLLlAAWABwAHgAkAECmAGZAaABkgOqAQMwLjO4AQPIAQCYAgCgAgCYAwCIBgGSBwCgB58BsgcAuAcAwgcAyAcAgAgA&sclient=mobile-gws-wiz-serp" 
 HOST = "metrx-factory.p.rapidapi.com"
 
-st.set_page_config(page_title="OscarBet Final", layout="centered")
+st.set_page_config(page_title="OscarBet Pro", layout="centered")
 st.title("⚽ OscarBet: Central de Datos")
 
-def fetch_metrx(endpoint):
+def fetch_data(endpoint, params=None):
     url = f"https://{HOST}{endpoint}"
     headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": HOST}
     try:
-        res = requests.get(url, headers=headers, timeout=10)
+        res = requests.get(url, headers=headers, params=params, timeout=10)
         return res.json()
-    except Exception as e:
-        return {"error": str(e)}
+    except:
+        return None
 
-menu = st.sidebar.radio("MENÚ", ["📅 Partidos de Hoy", "🏆 Ver Ligas"])
+menu = st.sidebar.radio("MENÚ", ["📅 Partidos Metrx", "🔍 Info Cruda"])
 
-if menu == "📅 Partidos de Hoy":
-    st.subheader("Buscando partidos...")
-    raw_data = fetch_metrx("/matches/upcoming")
-    
-    # ESTO ES LO QUE NOS DIRÁ LA VERDAD
-    if raw_data:
-        # Intento de mostrar datos ordenados
-        if isinstance(raw_data, dict) and 'data' in raw_data:
-            partidos = raw_data['data']
-            if len(partidos) > 0:
-                for m in partidos:
-                    st.write(f"✅ {m.get('home_team', 'Equipo A')} vs {m.get('away_team', 'Equipo B')}")
-            else:
-                st.warning("La API conectó, pero dice que no hay partidos en las próximas 8 horas.")
+if menu == "📅 Partidos Metrx":
+    st.subheader("Análisis de Partidos")
+    with st.spinner("Leyendo datos de Metrx..."):
+        # Usamos el endpoint que te dio el '200 OK'
+        data = fetch_data("/matches/upcoming")
         
-        # SI NO MUESTRA NADA ARRIBA, ESTO NOS MUESTRA EL ERROR REAL
-        st.divider()
-        with st.expander("🛠️ DEBUG: Ver respuesta real de la API"):
-            st.write(raw_data)
-    else:
-        st.error("No se recibió ninguna respuesta de la API.")
+        if data and data.get('success') == True:
+            # Según tu imagen, los partidos están en 'result'
+            lista_partidos = data.get('result', [])
+            
+            if lista_partidos:
+                for item in lista_partidos:
+                    m = item.get('match', {})
+                    # Intentamos sacar los nombres de los equipos
+                    # Si la API no da nombres aquí, usamos el ID
+                    match_id = m.get('id', 'Sin ID')
+                    st.success(f"Partido detectado ID: {match_id}")
+                    
+                    # Aquí añadiremos los tiros y corners cuando la API los suelte
+                    col1, col2 = st.columns(2)
+                    col1.write(f"**Inicio:** {m.get('start', 'N/A')}")
+                    col2.button("Ver Stats", key=match_id)
+            else:
+                st.warning("No hay partidos en la lista de resultados ahora mismo.")
+        else:
+            st.error("La API conectó pero no devolvió resultados exitosos.")
 
-elif menu == "🏆 Ver Ligas":
-    ligas_raw = fetch_metrx("/competitions")
-    st.write("### Respuesta de Ligas:")
-    st.write(ligas_raw)
+elif menu == "🔍 Info Cruda":
+    st.write("Esta sección es para ver si la API cambió algo:")
+    raw = fetch_data("/matches/upcoming")
+    st.json(raw)
