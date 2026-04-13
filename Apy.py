@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 
 # --- CONFIGURACIÓN ---
-731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799 
+RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" 
 HOST = "free-api-live-football-data.p.rapidapi.com"
 
 st.set_page_config(page_title="OscarBet VIP", layout="wide")
