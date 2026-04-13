@@ -5,57 +5,58 @@ import requests
 RAPIDAPI_KEY = "731523aab8msh1eff435e26d4b72p159696jsn88d8d69b6799" 
 HOST = "metrx-factory.p.rapidapi.com"
 
-st.set_page_config(page_title="OscarBet Pro", layout="centered")
-st.title("⚽ OscarBet: Central de Datos")
+st.set_page_config(page_title="OscarBet VIP", layout="centered")
+st.title("⚽ OscarBet: Inteligencia Metrx")
 
-def fetch_data(endpoint, params=None):
-    url = f"https://{HOST}{endpoint}"
-    headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": HOST
-    }
+def fetch_metrx():
+    # Usamos el endpoint exacto que te dio el 200 OK
+    url = f"https://{HOST}/match-metrics"
+    headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": HOST}
     try:
-        # Quitamos los 'params' fijos para que no bloquee la búsqueda
         res = requests.get(url, headers=headers, timeout=15)
         return res.json()
-    except Exception as e:
-        return {"error_local": str(e)}
+    except:
+        return None
 
-st.subheader("Partidos Disponibles")
+st.subheader("🔥 Partidos Analizados (Próximas Horas)")
 
-# Probamos con el endpoint base que suele ser el más estable
-data = fetch_data("/matches")
+data = fetch_metrx()
 
-if data:
-    # Si la API devuelve un mensaje de error, lo mostramos para saber
-    if "message" in data and "does not exist" in data["message"]:
-        st.error("La API dice que esa sección no existe. Probando ruta alternativa...")
-        # INTENTO PLAN B: Ruta que vimos en tu captura de pantalla
-        data = fetch_data("/match-metrics") 
-
-    # BUSCAR LOS PARTIDOS EN EL JSON
-    # Metrx suele guardarlos en 'result' o mandarlos como lista
-    partidos = []
-    if isinstance(data, dict):
-        partidos = data.get('result', data.get('data', []))
-    elif isinstance(data, list):
-        partidos = data
-
-    if partidos:
-        st.success(f"¡Conectado! Mostrando {len(partidos)} partidos.")
-        for item in partidos:
-            # Estructura según tu captura del 200 OK
-            m = item.get('match', item) 
-            match_id = m.get('id', 'Sin ID')
-            inicio = m.get('start', 'Ver horario')
+if data and data.get('success'):
+    # Entramos a la lista 'result' que vimos en tu imagen
+    resultados = data.get('result', [])
+    
+    if resultados:
+        st.success(f"Se encontraron {len(resultados)} partidos listos.")
+        
+        for item in resultados:
+            # Extraemos la info según tus pantallazos
+            m = item.get('match', {})
+            home = m.get('homeTeam', {}).get('name', 'Local')
+            away = m.get('awayTeam', {}).get('name', 'Visitante')
+            liga = m.get('competition', {}).get('name', 'Liga')
             
-            with st.expander(f"🏟️ Partido ID: {match_id}"):
-                st.write(f"**Inicio:** {inicio}")
-                st.write("**Estado:** Programado")
-                st.button("Analizar Corners", key=match_id)
+            # Extraemos las probabilidades (Odds) que se ven en tus fotos
+            performance = item.get('performance', {})
+            p_home = performance.get('homeTeam', {}).get('index', 0)
+            p_away = performance.get('awayTeam', {}).get('index', 0)
+
+            with st.expander(f"🏟️ {home} vs {away}"):
+                st.write(f"🏆 **Competencia:** {liga}")
+                st.write(f"⏰ **Inicio:** {m.get('start')}")
+                
+                col1, col2 = st.columns(2)
+                col1.metric("Índice Local", f"{p_home:.2f}")
+                col2.metric("Índice Visita", f"{p_away:.2f}")
+                
+                # Lógica de recomendación OscarBet
+                st.divider()
+                if p_home > p_away:
+                    st.success(f"🎯 Sugerencia: Fuerte tendencia a favor de {home}")
+                else:
+                    st.info(f"🎯 Sugerencia: Partido muy parejo o inclinado a {away}")
     else:
-        st.warning("No hay partidos en la lista ahora mismo.")
-        with st.expander("🛠️ Ver respuesta de la API"):
-            st.write(data)
+        st.warning("La API respondió pero la lista de partidos está vacía ahora mismo.")
 else:
-    st.error("No se recibió respuesta. Revisa tu Key.")
+    st.error("No se pudo conectar. Revisa que tu suscripción en RapidAPI siga activa.")
+    if data: st.write(data) # Para ver el error si vuelve a salir
